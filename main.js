@@ -3,11 +3,12 @@
 var c = document.getElementById("pcb");
 var ctx = c.getContext("2d");
 
-c.width = 1366;
-c.height = 768;
+c.width = 1500;
+c.height = 500;
 var gridSpacing = 6;
 var lineWidth = 4;
 var padSize = 4;
+var mouseX, mouseY, mouseDown;
 
 var width = Math.floor(c.width/gridSpacing);
 var height = Math.floor(c.height/gridSpacing);
@@ -35,24 +36,17 @@ var renderPad = function(x, y) {
 	ctx.stroke();
 }
 
-var shuffle = function(array) {
-	var counter = array.length;
-	while (counter > 0) {
-		var index = Math.floor(Math.random() * counter);
-		counter--;
-		var temp = array[counter];
-		array[counter] = array[index];
-		array[index] = temp;
+var shuffle = function(array) { // only shuffle the 2nd and 3rd elements
+	if (Math.random() > 0.5) {
+		var tmp = array[1];
+		array[1] = array[2];
+		array[2] = tmp;
 	}
 	return array;
 }
 
 var isEmpty = function(x, y) {
 	return x>=0 && x<width && y>=0 && y<height && !gridState[x][y];
-}
-
-var getNeighbors = function(x, y) {
-	return [[x-2, y-2], [x, y-2], [x+2, y-2], [x-2, y], [x+2, y], [x-2, y+2], [x, y+2], [x+2, y+2]];
 }
 
 var doLine = function(x0, y0, x1, y1) {
@@ -65,17 +59,38 @@ var doLine = function(x0, y0, x1, y1) {
 	var deadEnd = true;
 	var angle = Math.atan2(x1-x0, y1-y0);
 	
-	[0, Math.PI/4, -Math.PI/4].forEach(function(da){
+	shuffle([0, Math.PI/4, -Math.PI/4]).forEach(function(da){
 		var x2 = x1 + Math.round(Math.sin(angle + da))*2;
 		var y2 = y1 + Math.round(Math.cos(angle + da))*2;
-		if (Math.random() > 0.3) deadEnd &= doLine(x1, y1, x2, y2);
-	});
-	
-	shuffle(getNeighbors(x1, y1)).forEach(function(pos){
-		deadEnd &= doLine(x1, y1, pos[0], pos[1]);
+		if (Math.random() > 0.3) return (deadEnd &= doLine(x1, y1, x2, y2));
 	});
 	
 	if (deadEnd) renderPad(x1, y1);
 }
 
-doLine(0, 0, 0, 0);
+var grow = function() {
+	gridState[0][0] = true;
+	doLine(0, 0, 2, 2);
+}
+
+c.addEventListener('mousemove', function(e) {
+	var rect = c.getBoundingClientRect();
+	var rawX = e.clientX - rect.left;
+	var rawY = e.clientY - rect.top;
+	mouseX = Math.floor(rawX/(gridSpacing*2))*2;
+	mouseY = Math.floor(rawY/(gridSpacing*2))*2;
+	if (mouseDown) {
+		renderPad(mouseX, mouseY);
+		gridState[mouseX][mouseY] = true;
+	}
+}, false);
+
+c.addEventListener('mouseup', function() {
+	mouseDown = false;
+});
+
+c.addEventListener('mousedown', function() {
+	mouseDown = true;
+});
+
+grow();
